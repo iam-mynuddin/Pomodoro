@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Pomodoro Timer</title>
+
+    <!-- Bootstrap CSS -->
+    <link
+        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+        rel="stylesheet"
+    />
+
+    <style>
+        body {
+            background: #f4f6f9;
+        }
+        .timer {
+            font-size: 4rem;
+            font-weight: bold;
+        }
+        .status {
+            font-size: 1.2rem;
+            letter-spacing: 1px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container vh-100 d-flex justify-content-center align-items-center">
+    <div class="card shadow-lg p-4 text-center" style="max-width: 420px; width: 100%;">
+        <h3 class="mb-3">🍅 Pomodoro Timer</h3>
+
+        <div class="status text-muted mb-2" id="sessionType">Work Session</div>
+        <div class="timer mb-3" id="timer">25:00</div>
+
+        <div class="progress mb-3" style="height: 10px;">
+            <div class="progress-bar bg-success" id="progressBar" style="width: 100%"></div>
+        </div>
+
+        <div class="d-flex justify-content-between mb-3">
+            <button class="btn btn-success w-100 me-2" id="startBtn">Start</button>
+            <button class="btn btn-warning w-100 me-2" id="pauseBtn">Pause</button>
+            <button class="btn btn-danger w-100" id="resetBtn">Reset</button>
+        </div>
+
+        <hr>
+
+        <div class="row mb-2">
+            <div class="col">
+                <label class="form-label">Work (min)</label>
+                <input type="number" id="workMinutes" class="form-control" value="25" min="1">
+            </div>
+            <div class="col">
+                <label class="form-label">Break (min)</label>
+                <input type="number" id="breakMinutes" class="form-control" value="5" min="1">
+            </div>
+        </div>
+
+        <small class="text-muted">Sounds play automatically 🎧</small>
+    </div>
+</div>
+
+<!-- 🔊 Audio Elements -->
+<audio id="startWorkSound" src="start-work.mp3" preload="auto"></audio>
+<audio id="takeBreakSound" src="take-break.mp3" preload="auto"></audio>
+<audio id="pauseSound" src="pause.mp3" preload="auto"></audio>
+<audio id="resetSound" src="reset.mp3" preload="auto"></audio>
+
+<!-- jQuery -->
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
+<script>
+    let timer;
+    let isRunning = false;
+    let isWorkSession = true;
+
+    let totalSeconds = 25 * 60;
+    let remainingSeconds = totalSeconds;
+
+    function playSound(soundId) {
+        const sound = document.getElementById(soundId);
+        if (sound) {
+            sound.currentTime = 0;
+            sound.play().catch(() => {});
+        }
+    }
+
+    function updateDisplay() {
+        let minutes = Math.floor(remainingSeconds / 60);
+        let seconds = remainingSeconds % 60;
+
+        $("#timer").text(
+            String(minutes).padStart(2, "0") + ":" +
+            String(seconds).padStart(2, "0")
+        );
+
+        let percent = (remainingSeconds / totalSeconds) * 100;
+        $("#progressBar").css("width", percent + "%");
+    }
+
+    function setSession() {
+        let minutes = isWorkSession
+            ? parseInt($("#workMinutes").val())
+            : parseInt($("#breakMinutes").val());
+
+        totalSeconds = minutes * 60;
+        remainingSeconds = totalSeconds;
+
+        $("#sessionType").text(isWorkSession ? "Work Session" : "Break Session");
+        $("#progressBar")
+            .removeClass("bg-success bg-warning")
+            .addClass(isWorkSession ? "bg-success" : "bg-warning");
+
+        updateDisplay();
+    }
+
+    function startTimer() {
+        if (isRunning) return;
+
+        playSound(isWorkSession ? "startWorkSound" : "takeBreakSound");
+
+        isRunning = true;
+        timer = setInterval(() => {
+            if (remainingSeconds > 0) {
+                remainingSeconds--;
+                updateDisplay();
+            } else {
+                switchSession();
+            }
+        }, 1000);
+    }
+
+    function pauseTimer() {
+        if (!isRunning) return;
+        clearInterval(timer);
+        isRunning = false;
+        playSound("pauseSound");
+    }
+
+    function resetTimer() {
+        pauseTimer();
+        isWorkSession = true;
+        setSession();
+        playSound("resetSound");
+    }
+
+    function switchSession() {
+        pauseTimer();
+        isWorkSession = !isWorkSession;
+        setSession();
+        playSound(isWorkSession ? "startWorkSound" : "takeBreakSound");
+        startTimer();
+    }
+
+    $("#startBtn").click(startTimer);
+    $("#pauseBtn").click(pauseTimer);
+    $("#resetBtn").click(resetTimer);
+
+    $("#workMinutes, #breakMinutes").change(resetTimer);
+
+    setSession();
+</script>
+
+</body>
+</html>
