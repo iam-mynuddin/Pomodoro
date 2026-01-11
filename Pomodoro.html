@@ -4,11 +4,8 @@
     <meta charset="UTF-8">
     <title>Pomodoro Timer</title>
 
-    <!-- Bootstrap CSS -->
-    <link
-        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
-        rel="stylesheet"
-    />
+    <!-- Bootstrap -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 
     <style>
         body {
@@ -56,11 +53,11 @@
             </div>
         </div>
 
-        <small class="text-muted">Sounds play automatically 🎧</small>
+        <small class="text-muted">Tab-safe timer + sound enabled 🎧</small>
     </div>
 </div>
 
-<!-- 🔊 Audio Elements -->
+<!-- 🔊 Audio -->
 <audio id="startWorkSound" src="start-work.mp3" preload="auto"></audio>
 <audio id="takeBreakSound" src="take-break.mp3" preload="auto"></audio>
 <audio id="pauseSound" src="pause.mp3" preload="auto"></audio>
@@ -77,8 +74,10 @@
     let totalSeconds = 25 * 60;
     let remainingSeconds = totalSeconds;
 
-    function playSound(soundId) {
-        const sound = document.getElementById(soundId);
+    let expectedEndTime = null;
+
+    function playSound(id) {
+        const sound = document.getElementById(id);
         if (sound) {
             sound.currentTime = 0;
             sound.play().catch(() => {});
@@ -86,20 +85,20 @@
     }
 
     function updateDisplay() {
-        let minutes = Math.floor(remainingSeconds / 60);
-        let seconds = remainingSeconds % 60;
+        const minutes = Math.floor(remainingSeconds / 60);
+        const seconds = remainingSeconds % 60;
 
         $("#timer").text(
             String(minutes).padStart(2, "0") + ":" +
             String(seconds).padStart(2, "0")
         );
 
-        let percent = (remainingSeconds / totalSeconds) * 100;
+        const percent = (remainingSeconds / totalSeconds) * 100;
         $("#progressBar").css("width", percent + "%");
     }
 
     function setSession() {
-        let minutes = isWorkSession
+        const minutes = isWorkSession
             ? parseInt($("#workMinutes").val())
             : parseInt($("#breakMinutes").val());
 
@@ -120,11 +119,18 @@
         playSound(isWorkSession ? "startWorkSound" : "takeBreakSound");
 
         isRunning = true;
+        expectedEndTime = Date.now() + remainingSeconds * 1000;
+
         timer = setInterval(() => {
-            if (remainingSeconds > 0) {
-                remainingSeconds--;
-                updateDisplay();
-            } else {
+            const now = Date.now();
+            remainingSeconds = Math.max(
+                Math.ceil((expectedEndTime - now) / 1000),
+                0
+            );
+
+            updateDisplay();
+
+            if (remainingSeconds <= 0) {
                 switchSession();
             }
         }, 1000);
@@ -132,8 +138,15 @@
 
     function pauseTimer() {
         if (!isRunning) return;
+
         clearInterval(timer);
         isRunning = false;
+
+        remainingSeconds = Math.max(
+            Math.ceil((expectedEndTime - Date.now()) / 1000),
+            0
+        );
+
         playSound("pauseSound");
     }
 
@@ -145,9 +158,12 @@
     }
 
     function switchSession() {
-        pauseTimer();
+        clearInterval(timer);
+        isRunning = false;
+
         isWorkSession = !isWorkSession;
         setSession();
+
         playSound(isWorkSession ? "startWorkSound" : "takeBreakSound");
         startTimer();
     }
@@ -157,6 +173,12 @@
     $("#resetBtn").click(resetTimer);
 
     $("#workMinutes, #breakMinutes").change(resetTimer);
+
+    document.addEventListener("visibilitychange", () => {
+        if (!document.hidden && isRunning) {
+            updateDisplay();
+        }
+    });
 
     setSession();
 </script>
